@@ -19,7 +19,7 @@ def load_system_prompt(file_path: str = "system_prompt.txt") -> str:
         print(f"Warning: {file_path} not found. Using default prompt.")
         return "You are a helpful shopping assistant."
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5)
 
 #agent memory
 checkpoint = MemorySaver()

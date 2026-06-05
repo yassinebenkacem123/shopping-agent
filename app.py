@@ -269,9 +269,6 @@ with col_chat:
         """
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background-color: #00adb5; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 173, 181, 0.4);">
-                    <i class="fa-solid fa-robot" style="color: #ffffff; font-size: 26px;"></i>
-                </div>
                 <div>
                     <h1 style="margin: 0; font-size: 26px; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">SHOP AGENT</h1>
                     <p style="margin: 0; font-size: 13px; color: #94a3b8;">Conversational AI Shopping Assistant</p>
