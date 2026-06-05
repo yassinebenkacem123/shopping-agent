@@ -9,5 +9,7 @@ dependencies = [
     "langchain",
     "langchain-core",
     "langchain-community",
-    "langchain-google-genai"
+    "langchain-google-genai",
+    "langgraph",
+    "streamlit",
 ]
