@@ -24,9 +24,6 @@ def get_db_path() -> Path:
 
 def clean_emojis(text: str) -> str:
     """Strips all unicode emojis from the response text using character classification."""
-    # Emojis are classified as 'So' (Symbol, other) in Unicode database.
-    # Checkmarks might be categorized as 'So', but since we use FontAwesome, we want a clean output.
-    # Normal currency symbols ($: Sc), math symbols (+: Sm) are retained.
     return "".join(c for c in text if unicodedata.category(c) not in ('So',))
 
 def extract_message_text(message) -> str:
@@ -240,8 +237,51 @@ def get_orders():
 #     ::-webkit-scrollbar-thumb:hover {
 #         background: rgba(0, 173, 181, 0.5);
 #     }
+
+#     /* Product card inside chat messages */
+#     .product-card-chat {
+#         background: linear-gradient(135deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.5)) !important;
+#         border-radius: 12px !important;
+#         padding: 16px !important;
+#         margin: 14px 0 !important;
+#         border: 1px solid rgba(0, 173, 181, 0.2) !important;
+#         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+#     }
+    
+#     .product-card-chat h4 {
+#         color: #00adb5 !important;
+#         font-size: 1.15rem !important;
+#         font-weight: 600 !important;
+#         margin: 0 0 8px 0 !important;
+#     }
+
+#     .product-card-chat .product-meta {
+#         display: flex;
+#         flex-wrap: wrap;
+#         gap: 12px;
+#         font-size: 0.85rem;
+#         color: #94a3b8;
+#         margin-bottom: 10px;
+#     }
+
+#     .product-card-chat .product-meta strong {
+#         color: #00adb5 !important;
+#     }
+    
+#     .product-card-chat .highlight {
+#         border-left: 3px solid #00adb5 !important;
+#         background-color: rgba(0, 173, 181, 0.04) !important;
+#         padding: 8px 12px !important;
+#         margin-top: 10px !important;
+#         border-radius: 4px !important;
+#         color: #cbd5e1 !important;
+#         font-style: italic !important;
+#         font-size: 0.88rem !important;
+#         line-height: 1.4 !important;
+#     }
 #     </style>
-#     """
+#     """,
+#     unsafe_allow_html=True
 # )
 
 # ----------------- Session Init -----------------
@@ -262,7 +302,6 @@ if "messages" not in st.session_state:
 # Layout columns: Left Column (Chat Area) and Right Column (Control Panel)
 col_chat, col_showroom = st.columns([7, 5], gap="large")
 
-# ==================== LEFT COLUMN: CHAT INTERFACE ====================
 with col_chat:
     # App Title & Header
     st.markdown(
@@ -282,6 +321,73 @@ with col_chat:
         unsafe_allow_html=True
     )
     
+    # Image Upload Section
+    with st.expander("Upload Product Image for Visual Search", expanded=False):
+        uploaded_file = st.file_uploader(
+            "Upload an image (PNG/JPG/JPEG)",
+            type=["png", "jpg", "jpeg"],
+            key="image_search_uploader",
+            label_visibility="collapsed"
+        )
+        if uploaded_file is not None:
+            st.image(uploaded_file, caption="Selected Image Preview", width=250)
+            
+            # Check if this file has already been processed
+            file_name = uploaded_file.name
+            if st.session_state.get("last_uploaded_file") != file_name:
+                # Save the file to assets/uploads/
+                upload_dir = Path(__file__).parent / "assets" / "uploads"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                saved_path = upload_dir / file_name
+                with open(saved_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
+                # Update session state to prevent reprocessing
+                st.session_state.last_uploaded_file = file_name
+                
+                # Add a message to the chat
+                user_msg = f"Uploaded product image: {file_name}"
+                st.session_state.messages.append({
+                    "role": "user", 
+                    "content": f'<i class="fa-solid fa-image" style="color: #00adb5; margin-right: 5px;"></i> {user_msg}'
+                })
+                
+                # Query agent immediately
+                agent_query = (
+                    f"I have uploaded a product image. The image path is '{saved_path.as_posix()}'. "
+                    f"Please describe this product image using describe_product_image tool, "
+                    f"check if this product exists in the database, and show options if we have it or something similar."
+                )
+                
+                # Show spinner and invoke agent
+                with st.spinner("Analyzing image..."):
+                    try:
+                        res = agent_invoke(
+                            [HumanMessage(content=agent_query)], 
+                            config={"configurable": {"thread_id": st.session_state.thread_id}}
+                        )
+                        # Find last AIMessage response
+                        final_msg = None
+                        for m in reversed(res.get("messages", [])):
+                            if isinstance(m, AIMessage) and extract_message_text(m).strip():
+                                final_msg = m
+                                break
+                        
+                        if final_msg:
+                            response_text = extract_message_text(final_msg)
+                        else:
+                            response_text = "I analyzed the image, but did not generate a text response. Can I help you search for another product?"
+                            
+                        clean_response_text = clean_emojis(response_text)
+                    except Exception as e:
+                        clean_response_text = f'<i class="fa-solid fa-triangle-exclamation" style="color: #f44336; margin-right: 5px;"></i> Error analyzing image: {str(e)}'
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": clean_response_text})
+                st.rerun()
+        else:
+            # Clear tracker when file is removed
+            st.session_state.last_uploaded_file = None
+
     # Render Chat History
     chat_container = st.container()
     with chat_container:

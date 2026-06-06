@@ -4,9 +4,11 @@ import os
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from product_api import get_product_details, get_famous_products, get_products_by_category, get_products_by_price_range, get_organic_products, search_products, get_product_price, get_products_by_keyword, get_products_by_rating, place_order
 from review_api import get_product_rating, get_products_rating
 from langgraph.checkpoint.memory import MemorySaver
+from reading_image import describe_product_image
 import json
 load_dotenv()
 
@@ -19,10 +21,11 @@ def load_system_prompt(file_path: str = "system_prompt.txt") -> str:
         print(f"Warning: {file_path} not found. Using default prompt.")
         return "You are a helpful shopping assistant."
 
+# llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.5)
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5)
 
 #agent memory
-checkpoint = MemorySaver()
+checkpointer = MemorySaver()
 
 # tools that will be used by the agent to interact with the product and review APIs
 @tool("get_product_details", description="Get details of a product by its ID. Input should be the product ID as an integer.")
@@ -74,6 +77,11 @@ def place_order_tool(product_id: int, quantity: int) -> str:
     return place_order(product_id, quantity)
 
 
+#tool that provides information to agent about an given image 
+@tool("describe_product_image", description="Describe the product image and return its key attributes as a JSON object.")
+def describe_product_image_tool(image_path: str) -> str:
+    return describe_product_image(image_path)
+
 
 # create the agent with the defined tools and the language model
 system_prompt = load_system_prompt()
@@ -93,9 +101,10 @@ agent = create_agent(
         get_product_rating_tool,
         get_products_rating_tool,
         place_order_tool,
+        describe_product_image_tool,
     ],
     system_prompt=system_prompt,
-    checkpointer=checkpoint
+    checkpointer=checkpointer
 )
 
 def agent_invoke(messages, config=None):
@@ -107,3 +116,4 @@ def agent_invoke(messages, config=None):
         },
         config=config
     )
+

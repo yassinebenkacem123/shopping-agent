@@ -12,4 +12,5 @@ dependencies = [
     "langchain-google-genai",
     "langgraph",
     "streamlit",
+    "langchain-groq"
 ]
